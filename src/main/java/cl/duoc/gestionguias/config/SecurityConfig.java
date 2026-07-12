@@ -31,14 +31,11 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // H2 console sin autenticacion (solo desarrollo)
                 .requestMatchers("/h2-console/**").permitAll()
 
-                // Solo rol DESCARGA puede descargar guias
                 .requestMatchers(HttpMethod.GET, "/guias/*/descargar")
                     .hasAuthority("ROLE_descarga")
 
-                // Rol GESTION puede usar el resto de endpoints
                 .requestMatchers(HttpMethod.POST, "/guias/cola1/procesar").hasAuthority("ROLE_gestion")
                 .requestMatchers(HttpMethod.POST, "/guias").hasAuthority("ROLE_gestion")
                 .requestMatchers(HttpMethod.POST, "/guias/*/subir").hasAuthority("ROLE_gestion")
@@ -46,7 +43,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/guias/*").hasAuthority("ROLE_gestion")
                 .requestMatchers(HttpMethod.GET, "/guias/**").hasAuthority("ROLE_gestion")
 
-                // Cualquier otra peticion requiere autenticacion
                 .anyRequest().authenticated()
             )
             .headers(headers -> headers
@@ -74,16 +70,14 @@ public class SecurityConfig {
         return decoder;
     }
 
-    /**
-     * Convierte el claim "extension_role" del token JWT de Azure AD B2C
-     * en un GrantedAuthority con prefijo ROLE_
-     * Ej: "gestion" -> ROLE_gestion, "descarga" -> ROLE_descarga
-     */
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter rolesConverter = new JwtGrantedAuthoritiesConverter();
-        // El claim personalizado que creamos en Azure AD B2C
         rolesConverter.setAuthoritiesClaimName("extension_role");
         rolesConverter.setAuthorityPrefix("ROLE_");
 
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(rolesConverter);
+        return converter;
+    }
+}
