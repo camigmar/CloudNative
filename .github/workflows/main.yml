@@ -42,15 +42,29 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${{ secrets.USER_SERVER }}@${{ secrets.EC2_HOST }} "
           echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u camigmar --password-stdin &&
           docker pull camigmar/my-app:latest &&
+
+          # RabbitMQ: si el contenedor no existe todavia en el EC2, se crea.
+          # Si ya existe (de un deploy anterior), no se toca, para no perder las colas.
+          docker ps -a --format '{{.Names}}' | grep -q '^rabbitmq-guias$' || \
+          docker run -d --name rabbitmq-guias \
+            -p 5672:5672 -p 15672:15672 \
+            -e RABBITMQ_DEFAULT_USER=admin \
+            -e RABBITMQ_DEFAULT_PASS=admin123 \
+            rabbitmq:3.13-management &&
+
           docker stop my-app || true &&
           docker rm my-app || true &&
           docker run -d --name my-app \
+            --network host \
             -v /mnt/efs:/mnt/efs \
-            -p 8080:8080 \
             -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
             -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
             -e AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }} \
             -e AZURE_ISSUER_URI=${{ secrets.AZURE_ISSUER_URI }} \
             -e AZURE_JWK_SET_URI=${{ secrets.AZURE_JWK_SET_URI }} \
+            -e RABBITMQ_HOST=localhost \
+            -e RABBITMQ_PORT=5672 \
+            -e RABBITMQ_USER=admin \
+            -e RABBITMQ_PASS=admin123 \
             camigmar/my-app:latest
           "
