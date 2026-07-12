@@ -51,6 +51,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- RabbitMQ -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-amqp</artifactId>
+		</dependency>
+
 		<!-- AWS S3 -->
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
@@ -83,13 +89,4 @@
 				<configuration>
 					<excludes>
 						<exclude>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-						</exclude>
-					</excludes>
-				</configuration>
-			</plugin>
-		</plugins>
-	</build>
-
-</project>
+							<groupId>org.projectlombok<

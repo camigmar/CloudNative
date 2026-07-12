@@ -12,7 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import cl.duoc.gestionguias.dto.GuiaMensajeDTO;
 import cl.duoc.gestionguias.entity.GuiaDespacho;
+import cl.duoc.gestionguias.producer.GuiaProducer;
 import cl.duoc.gestionguias.repository.GuiaRepository;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -27,6 +29,9 @@ public class GuiaService {
 
     @Autowired
     private S3Client s3Client;
+
+    @Autowired
+    private GuiaProducer guiaProducer;
 
     @Value("${aws.s3.bucket}")
     private String bucket;
@@ -47,7 +52,20 @@ public class GuiaService {
         String keyS3 = subirAmazonS3(guiaGuardada, rutaEfs);
         guiaGuardada.setUrlS3(keyS3);
 
-        return guiaRepository.save(guiaGuardada);
+        GuiaDespacho guardadaFinal = guiaRepository.save(guiaGuardada);
+
+        // 3. Publicar en Cola 1 (o Cola 2 si falla) para su posterior
+        //    procesamiento y guardado en la tabla "guias_procesadas"
+        guiaProducer.enviarGuia(new GuiaMensajeDTO(
+                guardadaFinal.getId(),
+                guardadaFinal.getNumeroGuia(),
+                guardadaFinal.getTransportista(),
+                guardadaFinal.getFecha(),
+                guardadaFinal.getEstado(),
+                guardadaFinal.getUrlS3()
+        ));
+
+        return guardadaFinal;
     }
 
     // Guardar archivo en EFS temporalmente
@@ -147,36 +165,12 @@ public class GuiaService {
             guia.setRutaEfs(rutaEfs);
             guia.setUrlS3(keyS3);
 
-            return guiaRepository.save(guia);
-        }
-        return null;
-    }
+            GuiaDespacho actualizada = guiaRepository.save(guia);
 
-    public boolean eliminarGuia(Long id) {
-        GuiaDespacho guia = buscarPorId(id);
-        if (guia != null) {
-            if (guia.getUrlS3() != null) {
-                DeleteObjectRequest request = DeleteObjectRequest.builder()
-                        .bucket(bucket)
-                        .key(guia.getUrlS3())
-                        .build();
-                s3Client.deleteObject(request);
-            }
-            guiaRepository.deleteById(id);
-            return true;
-        }
-        return false;
-    }
-
-    public List<GuiaDespacho> buscarPorTransportista(String transportista) {
-        return guiaRepository.findByTransportista(transportista);
-    }
-
-    public List<GuiaDespacho> buscarPorFecha(String fecha) {
-        return guiaRepository.findByFecha(fecha);
-    }
-
-    public List<GuiaDespacho> buscarPorTransportistaYFecha(String transportista, String fecha) {
-        return guiaRepository.findByTransportistaAndFecha(transportista, fecha);
-    }
-}
+            guiaProducer.enviarGuia(new GuiaMensajeDTO(
+                    actualizada.getId(),
+                    actualizada.getNumeroGuia(),
+                    actualizada.getTransportista(),
+                    actualizada.getFecha(),
+                    actualizada.getEstado(),
+                    actualizada.g

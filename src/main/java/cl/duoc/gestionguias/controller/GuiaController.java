@@ -9,7 +9,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import cl.duoc.gestionguias.consumer.GuiaConsumerService;
 import cl.duoc.gestionguias.entity.GuiaDespacho;
+import cl.duoc.gestionguias.entity.GuiaProcesada;
 import cl.duoc.gestionguias.service.GuiaService;
 
 @RestController
@@ -18,6 +20,16 @@ public class GuiaController {
 
     @Autowired
     private GuiaService guiaService;
+
+    @Autowired
+    private GuiaConsumerService guiaConsumerService;
+
+    // Endpoint adicional: consume los mensajes pendientes de la Cola 1
+    // de RabbitMQ y los guarda en la tabla "guias_procesadas" (rol GESTION)
+    @PostMapping("/cola1/procesar")
+    public List<GuiaProcesada> procesarColaUno() {
+        return guiaConsumerService.procesarMensajesColaUno();
+    }
 
     // Listar todas las guias (rol GESTION)
     @GetMapping
@@ -83,15 +95,4 @@ public class GuiaController {
 
     // Consultar por fecha (rol GESTION)
     @GetMapping("/fecha/{fecha}")
-    public List<GuiaDespacho> buscarPorFecha(@PathVariable String fecha) {
-        return guiaService.buscarPorFecha(fecha);
-    }
-
-    // Consultar por transportista Y fecha (rol GESTION)
-    @GetMapping("/transportista/{transportista}/fecha/{fecha}")
-    public List<GuiaDespacho> buscarPorTransportistaYFecha(
-            @PathVariable String transportista,
-            @PathVariable String fecha) {
-        return guiaService.buscarPorTransportistaYFecha(transportista, fecha);
-    }
-}
+    publ

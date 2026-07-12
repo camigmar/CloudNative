@@ -39,6 +39,7 @@ public class SecurityConfig {
                     .hasAuthority("ROLE_descarga")
 
                 // Rol GESTION puede usar el resto de endpoints
+                .requestMatchers(HttpMethod.POST, "/guias/cola1/procesar").hasAuthority("ROLE_gestion")
                 .requestMatchers(HttpMethod.POST, "/guias").hasAuthority("ROLE_gestion")
                 .requestMatchers(HttpMethod.POST, "/guias/*/subir").hasAuthority("ROLE_gestion")
                 .requestMatchers(HttpMethod.PUT, "/guias/*").hasAuthority("ROLE_gestion")
@@ -86,7 +87,3 @@ public class SecurityConfig {
         rolesConverter.setAuthorityPrefix("ROLE_");
 
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(rolesConverter);
-        return converter;
-    }
-}
