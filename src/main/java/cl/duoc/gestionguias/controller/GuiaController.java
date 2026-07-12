@@ -24,32 +24,26 @@ public class GuiaController {
     @Autowired
     private GuiaConsumerService guiaConsumerService;
 
-    // Endpoint adicional: consume los mensajes pendientes de la Cola 1
-    // de RabbitMQ y los guarda en la tabla "guias_procesadas" (rol GESTION)
     @PostMapping("/cola1/procesar")
     public List<GuiaProcesada> procesarColaUno() {
         return guiaConsumerService.procesarMensajesColaUno();
     }
 
-    // Listar todas las guias (rol GESTION)
     @GetMapping
     public List<GuiaDespacho> obtenerGuias() {
         return guiaService.obtenerGuias();
     }
 
-    // Crear guia (rol GESTION)
     @PostMapping
     public GuiaDespacho crearGuia(@RequestBody GuiaDespacho guia) {
         return guiaService.crearGuia(guia);
     }
 
-    // Buscar por ID (rol GESTION)
     @GetMapping("/{id}")
     public GuiaDespacho buscarPorId(@PathVariable Long id) {
         return guiaService.buscarPorId(id);
     }
 
-    // Actualizar guia (rol GESTION)
     @PutMapping("/{id}")
     public GuiaDespacho actualizarGuia(
             @PathVariable Long id,
@@ -57,14 +51,12 @@ public class GuiaController {
         return guiaService.actualizarGuia(id, guia);
     }
 
-    // Eliminar guia (rol GESTION)
     @DeleteMapping("/{id}")
     public String eliminarGuia(@PathVariable Long id) {
         boolean eliminada = guiaService.eliminarGuia(id);
         return eliminada ? "Guía eliminada correctamente" : "No se encontró la guía";
     }
 
-    // Descargar archivo desde S3 (rol DESCARGA)
     @GetMapping("/{id}/descargar")
     public ResponseEntity<byte[]> descargarGuia(@PathVariable Long id) {
         byte[] archivo = guiaService.descargarGuia(id);
@@ -77,7 +69,6 @@ public class GuiaController {
                 .body(archivo);
     }
 
-    // Subir archivo externo a S3 (rol GESTION)
     @PostMapping("/{id}/subir")
     public ResponseEntity<GuiaDespacho> subirArchivo(
             @PathVariable Long id,
@@ -87,12 +78,20 @@ public class GuiaController {
         return ResponseEntity.ok(guia);
     }
 
-    // Consultar por transportista (rol GESTION)
     @GetMapping("/transportista/{transportista}")
     public List<GuiaDespacho> buscarPorTransportista(@PathVariable String transportista) {
         return guiaService.buscarPorTransportista(transportista);
     }
 
-    // Consultar por fecha (rol GESTION)
     @GetMapping("/fecha/{fecha}")
-    publ
+    public List<GuiaDespacho> buscarPorFecha(@PathVariable String fecha) {
+        return guiaService.buscarPorFecha(fecha);
+    }
+
+    @GetMapping("/transportista/{transportista}/fecha/{fecha}")
+    public List<GuiaDespacho> buscarPorTransportistaYFecha(
+            @PathVariable String transportista,
+            @PathVariable String fecha) {
+        return guiaService.buscarPorTransportistaYFecha(transportista, fecha);
+    }
+}
