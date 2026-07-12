@@ -44,18 +44,14 @@ public class GuiaService {
         guia.setEstado("GENERADA");
         GuiaDespacho guiaGuardada = guiaRepository.save(guia);
 
-        // 1. Guardar temporalmente en EFS
         String rutaEfs = guardarEnEfs(guiaGuardada);
         guiaGuardada.setRutaEfs(rutaEfs);
 
-        // 2. Subir a S3 organizado por fecha/transportista
         String keyS3 = subirAmazonS3(guiaGuardada, rutaEfs);
         guiaGuardada.setUrlS3(keyS3);
 
         GuiaDespacho guardadaFinal = guiaRepository.save(guiaGuardada);
 
-        // 3. Publicar en Cola 1 (o Cola 2 si falla) para su posterior
-        //    procesamiento y guardado en la tabla "guias_procesadas"
         guiaProducer.enviarGuia(new GuiaMensajeDTO(
                 guardadaFinal.getId(),
                 guardadaFinal.getNumeroGuia(),
@@ -68,7 +64,6 @@ public class GuiaService {
         return guardadaFinal;
     }
 
-    // Guardar archivo en EFS temporalmente
     private String guardarEnEfs(GuiaDespacho guia) {
         String carpeta = efsPath + "/" + guia.getFecha() + "/" + guia.getTransportista();
         File dir = new File(carpeta);
@@ -88,7 +83,6 @@ public class GuiaService {
         return rutaArchivo;
     }
 
-    // Subir archivo desde EFS a S3
     private String subirAmazonS3(GuiaDespacho guia, String rutaEfs) {
         String keyS3 = guia.getFecha() + "/" + guia.getTransportista() + "/" + guia.getNumeroGuia() + ".txt";
 
@@ -102,7 +96,6 @@ public class GuiaService {
         return keyS3;
     }
 
-    // Descargar archivo desde S3
     public byte[] descargarGuia(Long id) {
         GuiaDespacho guia = buscarPorId(id);
         if (guia == null || guia.getUrlS3() == null) return null;
@@ -116,7 +109,6 @@ public class GuiaService {
         return response.asByteArray();
     }
 
-    // Subir archivo externo a S3
     public GuiaDespacho subirArchivo(Long id, MultipartFile file) {
         GuiaDespacho guia = buscarPorId(id);
         if (guia == null) return null;
@@ -173,4 +165,39 @@ public class GuiaService {
                     actualizada.getTransportista(),
                     actualizada.getFecha(),
                     actualizada.getEstado(),
-                    actualizada.g
+                    actualizada.getUrlS3()
+            ));
+
+            return actualizada;
+        }
+        return null;
+    }
+
+    public boolean eliminarGuia(Long id) {
+        GuiaDespacho guia = buscarPorId(id);
+        if (guia != null) {
+            if (guia.getUrlS3() != null) {
+                DeleteObjectRequest request = DeleteObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(guia.getUrlS3())
+                        .build();
+                s3Client.deleteObject(request);
+            }
+            guiaRepository.deleteById(id);
+            return true;
+        }
+        return false;
+    }
+
+    public List<GuiaDespacho> buscarPorTransportista(String transportista) {
+        return guiaRepository.findByTransportista(transportista);
+    }
+
+    public List<GuiaDespacho> buscarPorFecha(String fecha) {
+        return guiaRepository.findByFecha(fecha);
+    }
+
+    public List<GuiaDespacho> buscarPorTransportistaYFecha(String transportista, String fecha) {
+        return guiaRepository.findByTransportistaAndFecha(transportista, fecha);
+    }
+}
