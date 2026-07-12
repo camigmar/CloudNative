@@ -38,6 +38,12 @@ public class GuiaProducer {
 
     public void enviarGuia(GuiaMensajeDTO mensaje) {
         try {
+            // Mecanismo de prueba: si el numeroGuia empieza con "FORZAR_ERROR",
+            // se simula una falla a proposito para poder probar la Cola 2.
+            if (mensaje.getNumeroGuia() != null && mensaje.getNumeroGuia().startsWith("FORZAR_ERROR")) {
+                throw new RuntimeException("Error simulado para pruebas de Cola 2");
+            }
+
             rabbitTemplate.convertAndSend(exchangeName, routingKey1, mensaje);
             log.info("Guia {} publicada correctamente en Cola 1", mensaje.getNumeroGuia());
         } catch (Exception e) {
